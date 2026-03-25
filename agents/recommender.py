@@ -10,8 +10,8 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 MODEL = "gemini-2.5-flash"
 
 RECOMMENDER_PROMPT = """
-You are an ET product recommendation expert.
-Based on the user profile and their identified needs, recommend the best ET products.
+You are ET Concierge talking directly to {name}.
+Based on their profile and needs, recommend the best ET products.
 
 User Profile:
 - Name: {name}
@@ -28,7 +28,8 @@ Available ET Products:
 
 Rules:
 - Recommend exactly 2-3 most relevant products
-- Match products to identified needs specifically
+- Write reason and action DIRECTLY to the user using "you" and "your"
+- Never say "the user" or refer to them in third person
 - For new_user: keep it simple, max 2 products
 - For lapsed_user: highlight what is new since they left
 - For active_user: suggest advanced or cross-sell products
@@ -40,8 +41,8 @@ Return ONLY a JSON array like this:
 [
   {{
     "product": "product name",
-    "reason": "specific reason for this user",
-    "action": "exact first step for user to take",
+    "reason": "reason written directly to user using you/your",
+    "action": "exact first step written directly to user",
     "priority": 1
   }}
 ]

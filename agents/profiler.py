@@ -2,9 +2,10 @@ from google import genai
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
 MODEL = "gemini-2.5-flash"
 
 PROFILER_PROMPT = """
