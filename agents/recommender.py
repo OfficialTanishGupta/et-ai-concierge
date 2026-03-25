@@ -1,13 +1,13 @@
-import google.generativeai as genai
+from google import genai
 import os
 import json
 from dotenv import load_dotenv
 from utils.et_products import ET_PRODUCTS
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel("gemini-2.0-flash")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL = "gemini-2.5-flash"
 
 RECOMMENDER_PROMPT = """
 You are an ET product recommendation expert.
@@ -32,7 +32,7 @@ Rules:
 - For new_user: keep it simple, max 2 products
 - For lapsed_user: highlight what is new since they left
 - For active_user: suggest advanced or cross-sell products
-- Never recommend more than 3 products at once (overwhelming)
+- Never recommend more than 3 products at once
 - If user searched for home loan or property, always include ET Financial Services - Home Loan
 - Never mention competitor platforms
 
@@ -70,11 +70,9 @@ Rules:
 def run_recommender(state: dict) -> dict:
     """Agent 3: Recommends ET products and creates onboarding path"""
 
-    # Format needs and products for prompt
     needs_text = json.dumps(state.get("identified_needs", []), indent=2)
     products_text = json.dumps(ET_PRODUCTS, indent=2)
 
-    # Build recommendation prompt
     prompt = RECOMMENDER_PROMPT.format(
         name=state.get("name", "User"),
         age=state.get("age", "unknown"),
@@ -86,23 +84,21 @@ def run_recommender(state: dict) -> dict:
     )
 
     try:
-        # Get product recommendations
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=MODEL,
+            contents=prompt
+        )
         json_text = response.text.strip()
         json_text = json_text.replace("```json", "").replace("```", "").strip()
         recommendations = json.loads(json_text)
 
-        # Save recommendations to state
         state["recommended_products"] = recommendations
-
-        # Log agent action
         state["agent_log"].append({
             "agent": "Recommender",
             "action": "Product recommendations complete",
             "output": recommendations
         })
 
-        # Now generate personalized onboarding message
         onboarding_prompt = ONBOARDING_PROMPT.format(
             name=state.get("name", "User"),
             recommendations=json.dumps(recommendations, indent=2),
@@ -110,10 +106,12 @@ def run_recommender(state: dict) -> dict:
             investment_experience=state.get("investment_experience", "beginner")
         )
 
-        onboarding_response = model.generate_content(onboarding_prompt)
+        onboarding_response = client.models.generate_content(
+            model=MODEL,
+            contents=onboarding_prompt
+        )
         state["onboarding_path"] = onboarding_response.text.strip()
 
-        # Log onboarding action
         state["agent_log"].append({
             "agent": "Recommender",
             "action": "Onboarding path created",
@@ -121,7 +119,6 @@ def run_recommender(state: dict) -> dict:
         })
 
     except Exception as e:
-        # Fallback recommendation
         state["recommended_products"] = [
             {
                 "product": "ET Money",
@@ -131,7 +128,6 @@ def run_recommender(state: dict) -> dict:
             }
         ]
         state["onboarding_path"] = f"Welcome to ET, {state.get('name', 'there')}! Start your journey with ET Money — India's simplest investing app."
-
         state["agent_log"].append({
             "agent": "Recommender",
             "action": "Recommendation failed, using fallback",

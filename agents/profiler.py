@@ -1,11 +1,11 @@
-import google.generativeai as genai
+from google import genai
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel("gemini-2.0-flash")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL = "gemini-2.5-flash"
 
 PROFILER_PROMPT = """
 You are ET Concierge, a friendly financial assistant for Economic Times.
@@ -36,53 +36,57 @@ Respond naturally and extract profile information:
 
 def run_profiler(state: dict) -> dict:
     """Agent 1: Profiles the user in minimal turns"""
-    
+
     # Build chat history string
     chat_history = ""
     for msg in state["messages"]:
         role = "User" if msg["role"] == "user" else "ET Concierge"
         chat_history += f"{role}: {msg['content']}\n"
-    
+
     # Get last user message
     user_message = state["messages"][-1]["content"] if state["messages"] else ""
-    
+
     # Call Gemini
     prompt = PROFILER_PROMPT.format(
         chat_history=chat_history,
         user_message=user_message
     )
-    
-    response = model.generate_content(prompt)
+
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=prompt
+    )
     response_text = response.text
-    
+
     # Check if profiling is complete
     profiling_complete = "[PROFILE_COMPLETE]" in response_text
     clean_response = response_text.replace("[PROFILE_COMPLETE]", "").strip()
-    
+
     # Extract profile details using Gemini
     if profiling_complete:
         extract_prompt = f"""
         Based on this conversation, extract user profile as JSON:
         {chat_history}
-        
+
         Return ONLY a JSON object with these exact keys:
         name, age, occupation, income_range, investment_experience, goals, persona
-        
+
         For persona use: new_user, lapsed_user, or active_user
         For goals use a list of strings
         If any field is unknown use null
         """
-        
-        extract_response = model.generate_content(extract_prompt)
-        
+
+        extract_response = client.models.generate_content(
+            model=MODEL,
+            contents=extract_prompt
+        )
+
         try:
             import json
-            # Clean response to get pure JSON
             json_text = extract_response.text.strip()
             json_text = json_text.replace("```json", "").replace("```", "").strip()
             profile = json.loads(json_text)
-            
-            # Update state with extracted profile
+
             state.update({
                 "name": profile.get("name"),
                 "age": profile.get("age"),
@@ -93,27 +97,26 @@ def run_profiler(state: dict) -> dict:
                 "persona": profile.get("persona", "new_user"),
                 "profiling_complete": True
             })
-            
-            # Log agent action
+
             state["agent_log"].append({
                 "agent": "Profiler",
                 "action": "Profile extraction complete",
                 "output": profile
             })
-            
+
         except Exception as e:
             state["agent_log"].append({
-                "agent": "Profiler", 
+                "agent": "Profiler",
                 "action": "Profile extraction failed",
                 "error": str(e)
             })
-    
+
     # Add response to messages
     state["messages"].append({
         "role": "assistant",
         "content": clean_response
     })
-    
+
     state["turn_count"] = state.get("turn_count", 0) + 1
-    
+
     return state

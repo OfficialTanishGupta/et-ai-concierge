@@ -1,11 +1,12 @@
-import google.generativeai as genai
+from google import genai
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel("gemini-2.0-flash")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+MODEL = "gemini-2.5-flash"
 
 IDENTIFIER_PROMPT = """
 You are a financial needs analyst for Economic Times.
@@ -40,7 +41,6 @@ Return ONLY a JSON array of exactly 3 needs like this:
 def run_identifier(state: dict) -> dict:
     """Agent 2: Identifies user's top financial needs from profile"""
 
-    # Build prompt with user profile
     prompt = IDENTIFIER_PROMPT.format(
         name=state.get("name", "User"),
         age=state.get("age", "unknown"),
@@ -52,17 +52,15 @@ def run_identifier(state: dict) -> dict:
     )
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=MODEL,
+            contents=prompt
+        )
         json_text = response.text.strip()
         json_text = json_text.replace("```json", "").replace("```", "").strip()
-
-        import json
         needs = json.loads(json_text)
 
-        # Save to state
         state["identified_needs"] = needs
-
-        # Log agent action
         state["agent_log"].append({
             "agent": "Identifier",
             "action": "Needs identification complete",
@@ -70,7 +68,6 @@ def run_identifier(state: dict) -> dict:
         })
 
     except Exception as e:
-        # Fallback needs if parsing fails
         state["identified_needs"] = [
             {
                 "need": "Basic Investment Education",
@@ -88,7 +85,6 @@ def run_identifier(state: dict) -> dict:
                 "priority": "medium"
             }
         ]
-
         state["agent_log"].append({
             "agent": "Identifier",
             "action": "Needs identification failed, using fallback",
