@@ -125,6 +125,45 @@ if state["pipeline_complete"]:
         st.info(state["onboarding_path"])
 
     # Identified needs
+    # Financial Health Score
+    if state.get("overall_score"):
+        st.markdown("### 📊 Your Financial Health Score")
+        score = state["overall_score"]
+        col1, col2, col3, col4 = st.columns(4)
+
+        scores = state.get("financial_scores", {})
+
+        with col1:
+            s = scores.get("emergency_preparedness", {}).get("score", 0)
+            st.metric("🛡️ Emergency", f"{s}/10")
+            st.caption(scores.get("emergency_preparedness", {}).get("insight", ""))
+
+        with col2:
+            s = scores.get("investment_readiness", {}).get("score", 0)
+            st.metric("📈 Investing", f"{s}/10")
+            st.caption(scores.get("investment_readiness", {}).get("insight", ""))
+
+        with col3:
+            s = scores.get("goal_clarity", {}).get("score", 0)
+            st.metric("🎯 Goals", f"{s}/10")
+            st.caption(scores.get("goal_clarity", {}).get("insight", ""))
+
+        with col4:
+            s = scores.get("financial_awareness", {}).get("score", 0)
+            st.metric("🧠 Awareness", f"{s}/10")
+            st.caption(scores.get("financial_awareness", {}).get("insight", ""))
+
+        st.progress(score / 10)
+        st.caption(f"Overall Financial Health: {score}/10")
+
+    # Gap Analysis
+    if state.get("gap_analysis"):
+        st.markdown("### 🔎 Financial Gap Analysis")
+        st.warning(state["gap_analysis"])
+        if state.get("monthly_savings_target"):
+            st.info(f"💰 Recommended Monthly Savings Target: **{state['monthly_savings_target']}**")
+
+    # Identified needs
     if state["identified_needs"]:
         st.markdown("### 🔍 Your Financial Needs")
         for need in state["identified_needs"]:
@@ -133,9 +172,12 @@ if state["pipeline_complete"]:
                 priority_color = "🔴" if priority == "high" else "🟡" if priority == "medium" else "🟢"
                 need_title = need.get("need", "")
                 need_reason = need.get("reason", "")
+                estimated_impact = need.get("estimated_impact", "")
                 with st.container(border=True):
                     st.markdown(f"{priority_color} **{need_title}**")
-                    st.caption(need_reason)
+                    st.write(need_reason)
+                    if estimated_impact:
+                        st.success(f"✨ Impact: {estimated_impact}")
     else:
         st.warning("No needs identified yet")
 
