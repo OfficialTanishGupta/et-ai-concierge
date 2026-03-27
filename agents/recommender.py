@@ -1,13 +1,31 @@
 from google import genai
 import os
 import json
+import re
 from dotenv import load_dotenv
 from utils.et_products import ET_PRODUCTS
 
-load_dotenv()
+load_dotenv(override=True)
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = (
+    os.getenv("GEMINI_API_KEY") or
+    os.environ.get("GEMINI_API_KEY")
+)
+
+if not api_key:
+    try:
+        with open(".env", "r", encoding="utf-8") as f:
+            for line in f:
+                if "GEMINI_API_KEY" in line:
+                    api_key = line.split("=", 1)[1].strip()
+                    break
+    except:
+        pass
+
+client = genai.Client(api_key=api_key)
 MODEL = "gemini-2.5-flash"
+
+
 
 RECOMMENDER_PROMPT = """
 You are ET Concierge talking directly to {name}.
@@ -91,6 +109,9 @@ def run_recommender(state: dict) -> dict:
         )
         json_text = response.text.strip()
         json_text = json_text.replace("```json", "").replace("```", "").strip()
+        match = re.search(r'\[.*\]', json_text, re.DOTALL)
+        if match:
+            json_text = match.group(0)
         recommendations = json.loads(json_text)
 
         state["recommended_products"] = recommendations

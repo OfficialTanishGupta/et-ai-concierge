@@ -1,11 +1,28 @@
 from google import genai
 import os
 import json
+import re
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-api_key = os.getenv("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+api_key = (
+    os.getenv("GEMINI_API_KEY") or
+    os.environ.get("GEMINI_API_KEY")
+)
+
+if not api_key:
+    try:
+        with open(".env", "r", encoding="utf-8") as f:
+            for line in f:
+                if "GEMINI_API_KEY" in line:
+                    api_key = line.split("=", 1)[1].strip()
+                    break
+    except:
+        pass
+
+client = genai.Client(api_key=api_key)
+MODEL = "gemini-2.5-flash"
 client = genai.Client(api_key=api_key)
 MODEL = "gemini-2.5-flash"
 
@@ -87,6 +104,9 @@ def run_identifier(state: dict) -> dict:
         )
         json_text = response.text.strip()
         json_text = json_text.replace("```json", "").replace("```", "").strip()
+        match = re.search(r'\{.*\}', json_text, re.DOTALL)
+        if match:
+            json_text = match.group(0)
         analysis = json.loads(json_text)
 
         # Store full analysis in state
