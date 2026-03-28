@@ -6,6 +6,10 @@ Built for **ET AI Hackathon 2026** | Track 7: AI Concierge for ET
 
 ---
 
+## 🎥 Demo Video
+
+[Watch 3-minute pitch and demo] (https://drive.google.com/file/d/1RrcGUgG3GyzqVQZbkCGT5oOvVQgsin1y/view?usp=sharing)
+
 ## 🎯 Problem
 
 Most ET users discover only 10% of what ET offers. There is no
